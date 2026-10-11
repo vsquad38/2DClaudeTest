@@ -1,15 +1,23 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
+using UnityEngine.Tilemaps;
 
 // Top-down 4-direction movement with a sword swing.
 // Move: WASD / arrow keys / left stick. Attack: Space, J or gamepad south button.
 [RequireComponent(typeof(Rigidbody2D), typeof(Health))]
 public class PlayerController : MonoBehaviour
 {
-    public float moveSpeed = 5f;
+    public float moveSpeed = 6f;
     public SwordHitbox sword;
+    // Fired with each swing while health is at least beamHealthFraction of max.
+    public SwordBeam beamPrefab;
+    [Range(0f, 1f)] public float beamHealthFraction = 0.5f;
+    // Below this fraction of max health the music switches to the danger theme.
+    [Range(0f, 1f)] public float dangerHealthFraction = 0.25f;
+    // Crystal Sword bolts burn bushes away on this tilemap.
+    public Tilemap walls;
+    public TileBase bushTile;
     public float swingDuration = 0.2f;
     public float swingCooldown = 0.1f;
     public float swingArc = 140f;
@@ -41,6 +49,7 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody2D>();
         health = GetComponent<Health>();
         anim = GetComponent<PlayerAnimator>();
+        health.SetMax(GameSession.MaxHearts); // hearts refill each level and grow as you clear levels
         health.Damaged += OnDamaged;
         health.Died += OnDied;
         if (sword != null)
@@ -53,6 +62,8 @@ public class PlayerController : MonoBehaviour
     void Update()
     {
         if (health.IsDead || GameHUD.Paused) return;
+
+        AudioManager.SetDanger(HealthFraction < dangerHealthFraction);
 
         if (Frozen)
         {
@@ -100,6 +111,7 @@ public class PlayerController : MonoBehaviour
         sword.Begin(swingFacing);
         SetSwordAngle(baseAngle + sweep * 0.5f);
         sword.gameObject.SetActive(true);
+        if (HealthFraction >= beamHealthFraction) FireBeam(swingFacing);
 
         for (float t = 0f; t < swingDuration; t += Time.deltaTime)
         {
@@ -115,6 +127,19 @@ public class PlayerController : MonoBehaviour
         nextSwingTime = Time.time + swingCooldown;
     }
 
+    float HealthFraction => (float)health.Current / health.Max;
+
+    // At half health or more, the sword also shoots a lightning bolt that deals the same damage as the sword.
+    // One bolt on screen at a time, or two with the Crystal Sword.
+    void FireBeam(Vector2 direction)
+    {
+        int maxBolts = sword.upgraded ? 2 : 1;
+        if (beamPrefab == null || SwordBeam.ActiveCount >= maxBolts) return;
+        var beam = Instantiate(beamPrefab, (Vector2)transform.position + direction * 0.9f, Quaternion.identity);
+        beam.Launch(direction, sword.damage, sword.upgraded, walls, bushTile);
+        AudioManager.Play(Sfx.Zap);
+    }
+
     void SetSwordAngle(float angle)
     {
         var rot = Quaternion.Euler(0f, 0f, angle);
@@ -124,9 +149,11 @@ public class PlayerController : MonoBehaviour
 
     void OnDamaged()
     {
+        GameSession.AddDamage(health.LastDamage);
         if (!health.IsDead) AudioManager.Play(Sfx.Hurt);
     }
 
+    // Roguelike: dying ends the run. The HUD shows the game-over screen and starts a new run from there.
     void OnDied()
     {
         rb.linearVelocity = Vector2.zero;
@@ -134,13 +161,7 @@ public class PlayerController : MonoBehaviour
         transform.rotation = Quaternion.Euler(0, 0, 90);
         AudioManager.StopMusic();
         AudioManager.Play(Sfx.GameOver);
-        StartCoroutine(RestartAfterDelay());
-    }
-
-    IEnumerator RestartAfterDelay()
-    {
-        yield return new WaitForSeconds(2.5f);
-        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        GameHUD.OnPlayerDied();
     }
 
     static Vector2 ReadMove()

@@ -9,8 +9,10 @@ public class Boss : MonoBehaviour
     public static Boss Instance { get; private set; }
     public static bool Defeated { get; private set; }
 
+    // Level-1 values; each level adds 2 basic-sword hits and 1 Crystal Sword hit every other level.
     public int hitsWithBasicSword = 10;
     public int hitsWithUpgradedSword = 3;
+    public int scoreValue = 2000;
 
     public float walkSpeed = 1.4f;
     public float chargeSpeed = 8f;
@@ -33,6 +35,9 @@ public class Boss : MonoBehaviour
     Transform player;
     Vector3 spawnPosition;
     bool hitWall;
+    int basicHits;
+    int upgradedHits;
+    int fireballDamage = 1;
 
     public Health Health => health != null ? health : (health = GetComponent<Health>());
 
@@ -46,11 +51,39 @@ public class Boss : MonoBehaviour
         spawnPosition = transform.position;
         health.Damaged += OnDamaged;
         health.Died += OnDied;
+        ApplyLevel(GameSession.Level);
+    }
+
+    // Harder every level: more hits to beat, faster and more frequent attacks, more fireballs, more damage.
+    void ApplyLevel(int level)
+    {
+        int n = level - 1;
+        basicHits = hitsWithBasicSword + 2 * n;
+        upgradedHits = hitsWithUpgradedSword + n / 2;
+        // HP = basic hits x upgraded hits, so each sword's damage per hit divides it exactly.
+        Health.SetMax(basicHits * upgradedHits);
+
+        walkSpeed *= Mathf.Min(2f, 1f + 0.12f * n);
+        chargeSpeed *= Mathf.Min(1.8f, 1f + 0.1f * n);
+        walkTime = Mathf.Max(0.7f, walkTime - 0.25f * n);
+        fireballsPerVolley = Mathf.Min(11, fireballsPerVolley + n);
+        fireballSpread = Mathf.Min(140f, fireballSpread + 10f * n);
+        fireballSpeed *= Mathf.Min(1.8f, 1f + 0.1f * n);
+        contactDamage += n / 2;
+        fireballDamage = 1 + n / 3;
     }
 
     void OnEnable()
     {
         StartCoroutine(Brain());
+    }
+
+    // Moves the boss's lair (used by the LevelDirector to place it in a random corner room each level).
+    public void Relocate(Vector3 position, Rect newBounds)
+    {
+        spawnPosition = position;
+        bounds = newBounds;
+        ResetToSpawn();
     }
 
     public void ResetToSpawn()
@@ -63,11 +96,14 @@ public class Boss : MonoBehaviour
         }
     }
 
-    // Damage per sword hit so that the boss always falls in exactly the configured number of hits.
+    public int HitsToBeat(bool upgradedSword) => upgradedSword ? upgradedHits : basicHits;
+
+    // Damage per sword hit so that the boss always falls in exactly HitsToBeat hits:
+    // with HP = basic x upgraded, the basic sword deals `upgraded` and the Crystal Sword deals `basic`.
     public int DamagePerHit(bool upgradedSword)
     {
-        int hits = upgradedSword ? hitsWithUpgradedSword : hitsWithBasicSword;
-        return Mathf.CeilToInt((float)Health.maxHealth / Mathf.Max(1, hits));
+        if (basicHits == 0) ApplyLevel(GameSession.Level); // not yet initialised (e.g. queried in the editor)
+        return upgradedSword ? basicHits : upgradedHits;
     }
 
     IEnumerator Brain()
@@ -142,7 +178,9 @@ public class Boss : MonoBehaviour
                 float angle = Mathf.Lerp(-fireballSpread / 2f, fireballSpread / 2f, k);
                 Vector2 dir = Quaternion.Euler(0, 0, angle) * aim;
                 var fb = Instantiate(fireballPrefab, (Vector2)transform.position + dir * 1.2f, Quaternion.identity);
-                fb.GetComponent<Fireball>().Launch(dir * fireballSpeed);
+                var fireball = fb.GetComponent<Fireball>();
+                fireball.damage = fireballDamage;
+                fireball.Launch(dir * fireballSpeed);
             }
         }
 
@@ -191,6 +229,7 @@ public class Boss : MonoBehaviour
 
     void OnDied()
     {
+        GameSession.AddKill(scoreValue);
         Defeated = true;
         Destroy(gameObject);
     }

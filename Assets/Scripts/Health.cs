@@ -6,11 +6,14 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D))]
 public class Health : MonoBehaviour
 {
+    // Base hit points as set up in the scene. Level scaling changes Max at runtime, not this.
     public int maxHealth = 3;
     public float invulnerableTime = 0.4f;
     public float stunTime = 0.15f;
 
+    public int Max { get; private set; }
     public int Current { get; private set; }
+    public int LastDamage { get; private set; }
     public bool IsDead => Current <= 0;
     public bool IsStunned => Time.time < stunnedUntil;
 
@@ -21,12 +24,26 @@ public class Health : MonoBehaviour
     SpriteRenderer sr;
     float invulnerableUntil;
     float stunnedUntil;
+    bool initialized;
 
-    void Awake()
+    void Awake() => EnsureInitialized();
+
+    void EnsureInitialized()
     {
-        Current = maxHealth;
+        if (initialized) return;
+        initialized = true;
+        Max = maxHealth;
+        Current = Max;
         rb = GetComponent<Rigidbody2D>();
         sr = GetComponent<SpriteRenderer>();
+    }
+
+    // Sets the runtime maximum (e.g. scaled by level) and refills to it.
+    public void SetMax(int max)
+    {
+        EnsureInitialized();
+        Max = Mathf.Max(1, max);
+        Current = Max;
     }
 
     void OnDisable()
@@ -39,6 +56,7 @@ public class Health : MonoBehaviour
     {
         if (IsDead || Time.time < invulnerableUntil) return false;
 
+        LastDamage = Mathf.Min(amount, Current);
         Current = Mathf.Max(0, Current - amount);
         invulnerableUntil = Time.time + invulnerableTime;
         stunnedUntil = Time.time + stunTime;
@@ -53,7 +71,7 @@ public class Health : MonoBehaviour
 
     public void Heal(int amount)
     {
-        Current = Mathf.Min(maxHealth, Current + amount);
+        Current = Mathf.Min(Max, Current + amount);
     }
 
     IEnumerator Flash()

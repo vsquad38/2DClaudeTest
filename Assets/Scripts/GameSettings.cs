@@ -9,6 +9,17 @@ public static class GameSettings
     const string MusicKey = "MusicVolume";
     const string SfxKey = "SfxVolume";
     const string FullscreenKey = "Fullscreen";
+    const string HudScaleKey = "HudScale";
+
+    public const float MinHudScale = 0.8f;
+    public const float MaxHudScale = 1.3f; // above this the end-of-run panels no longer fit on screen
+
+    // Extra size multiplier for the in-game HUD and messages (on top of scaling with the screen).
+    public static float HudScale
+    {
+        get => Mathf.Clamp(PlayerPrefs.GetFloat(HudScaleKey, 1f), MinHudScale, MaxHudScale);
+        set { PlayerPrefs.SetFloat(HudScaleKey, Mathf.Clamp(value, MinHudScale, MaxHudScale)); PlayerPrefs.Save(); }
+    }
 
     // 0..1 multipliers on top of the AudioManager's mix levels.
     public static float MusicVolume

@@ -59,6 +59,7 @@ public class RoomManager : MonoBehaviour
 
         SetRoomActive(Index(Current), false);
         foreach (var fireball in FindObjectsByType<Fireball>()) Destroy(fireball.gameObject);
+        foreach (var beam in FindObjectsByType<SwordBeam>()) Destroy(beam.gameObject);
 
         Vector2 step = new Vector2(next.x - Current.x, Current.y - next.y); // rows grow downward
         Vector3 camFrom = cam.transform.position;
