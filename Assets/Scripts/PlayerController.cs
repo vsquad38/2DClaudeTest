@@ -27,6 +27,15 @@ public class PlayerController : MonoBehaviour
     // Set by RoomManager while the screen scrolls: ignore input and play the walk cycle.
     public bool Frozen { get; set; }
 
+    public bool SwordUpgraded => sword != null && sword.upgraded;
+
+    public void UpgradeSword(Sprite upgradedSprite)
+    {
+        sword.upgraded = true;
+        sword.damage = 2;
+        if (upgradedSprite != null) swordRenderer.sprite = upgradedSprite;
+    }
+
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();

@@ -17,12 +17,14 @@ All of the pixel art, sound effects and music are generated from code — there 
 | Move | WASD / Arrow keys | Left stick |
 | Sword attack | Space / J | South button (A / Cross) |
 
-Walk through a doorway to scroll to the next room. Defeat every monster in the world to win. You have 5 hearts; if they run out, the board restarts.
+Walk through a doorway to scroll to the next room. Find and defeat the boss in the bottom-right arena to win. It takes 10 sword hits to beat, or just 3 if you've found the Crystal Sword hidden somewhere in the world. You have 5 hearts; if they run out, the board restarts.
 
 ## Features
 
 - **Screen-to-screen rooms**: nine rooms (woods, ruins, lake, hedge maze, moblin camp, graveyard, river crossing, arena and the starting clearing). The camera slides to the next room as you walk through a doorway, and only the current room's monsters are active. Monsters you leave alive return to their starting spots when you come back.
-- **Minimap** showing visited rooms and where you are.
+- **Boss fight**: a horned demon that stalks you, winds up and charges, and fires spreads of fireballs (you can slash them out of the air). Its room has its own unsettling music and a boss health bar. Beating it wins the game.
+- **Hidden Crystal Sword**: tucked away in one of the rooms. It cuts the boss down in 3 hits instead of 10 and does double damage to regular monsters.
+- **Minimap** showing visited rooms, the boss room, and where you are.
 - **Player** with four-direction movement, walk animations for each direction, and a sweeping sword arc.
 - **Three monster types**
   - **Slime** (red, 2 HP) — wanders around.
@@ -37,7 +39,7 @@ Walk through a doorway to scroll to the next room. Defeat every monster in the w
 
 | Path | Contents |
 | --- | --- |
-| `Assets/Scripts/` | Runtime gameplay: `PlayerController`, `PlayerAnimator`, `RoomManager`, `Enemy`, `SpriteAnimator`, `SwordHitbox`, `Health`, `HeartPickup`, `GameHUD`, `AudioManager` |
+| `Assets/Scripts/` | Runtime gameplay: `PlayerController`, `PlayerAnimator`, `RoomManager`, `Enemy`, `Boss`, `Fireball`, `SpriteAnimator`, `SwordHitbox`, `SwordPickup`, `Health`, `HeartPickup`, `GameHUD`, `AudioManager` |
 | `Assets/Editor/ZeldaBoardBuilder.cs` | Draws the pixel art and builds the level in the open scene |
 | `Assets/Editor/ChiptuneSynth.cs` | Synthesizes the sound effects and music as WAV files |
 | `Assets/Art/` | Generated sprites and tiles |
@@ -59,6 +61,8 @@ Each room's layout is a text grid in the `Rooms` list in `Assets/Editor/ZeldaBoa
 | `s` | Slime |
 | `v` | Bat |
 | `m` | Moblin |
+| `B` | Boss (its room gets the boss music) |
+| `S` | Hidden Crystal Sword |
 
 To change the world size, adjust `WorldRows` / `WorldCols` and add or remove room grids to match (listed row by row). After editing, run **Tools > Build Zelda Board** in the Unity menu. This regenerates the art, audio and level in the open scene and saves it.
 
