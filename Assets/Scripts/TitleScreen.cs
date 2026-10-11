@@ -20,7 +20,8 @@ public class TitleScreen : MonoBehaviour
     enum Page { Main, Instructions, Options }
 
     static readonly string[] MainItems = { "Play", "Instructions", "Options", "Exit" };
-    static readonly string[] OptionLabels = { "Music Volume", "Sound Volume", "Fullscreen", "Back" };
+    static readonly string[] OptionLabels = { "Music Volume", "Sound Volume", "HUD Size", "Fullscreen", "Back" };
+    const int BackRow = 4;
 
     static readonly Color Gold = new Color(1f, 0.85f, 0.3f);
     static readonly Color Crystal = new Color(0.6f, 0.92f, 1f);
@@ -100,13 +101,13 @@ public class TitleScreen : MonoBehaviour
                 GoTo(Page.Main);
                 break;
             case Page.Options:
-                if (index == 3) GoTo(Page.Main);
+                if (index == BackRow) GoTo(Page.Main);
                 else Adjust(index, 1, wrap: true);
                 break;
         }
     }
 
-    // Changes an option. Volumes move in 10% steps; fullscreen toggles.
+    // Changes an option. Volumes and HUD size move in 10% steps; fullscreen toggles.
     void Adjust(int row, int dir, bool wrap = false)
     {
         if (row == 0 || row == 1)
@@ -121,6 +122,13 @@ public class TitleScreen : MonoBehaviour
             Play(row == 1 ? selectSound : moveSound); // preview the new sound level
         }
         else if (row == 2)
+        {
+            float next = Mathf.Round(GameSettings.HudScale * 10f + dir) / 10f;
+            if (wrap && next > GameSettings.MaxHudScale + 0.001f) next = GameSettings.MinHudScale;
+            GameSettings.HudScale = next;
+            Play(moveSound);
+        }
+        else if (row == 3)
         {
             GameSettings.Fullscreen = !GameSettings.Fullscreen;
             Play(moveSound);
@@ -137,6 +145,7 @@ public class TitleScreen : MonoBehaviour
 
     void StartGame()
     {
+        GameSession.StartNewRun();
         leaving = true;
         Invoke(nameof(LoadGame), 0.25f); // let the select sound play
     }
@@ -190,6 +199,8 @@ public class TitleScreen : MonoBehaviour
             GUI.DrawTexture(new Rect(width / 2f + textWidth / 2f + 16, y, iconSize, iconSize), titleIcon);
         }
         Shadowed(new Rect(0, 170, width, 40), subtitle, subtitleStyle, Crystal);
+        if (GameSession.HighScore > 0)
+            Shadowed(new Rect(0, 210, width, 34), $"High Score {GameSession.HighScore:N0}    Best Level {GameSession.BestLevel}", hintStyle, Gold);
 
         float menuWidth = 360f;
         float top = 270f;
@@ -203,15 +214,18 @@ public class TitleScreen : MonoBehaviour
     void DrawInstructions(float width)
     {
         float panelWidth = Mathf.Min(900f, width - 60f);
-        var panel = new Rect(width / 2f - panelWidth / 2f, 40, panelWidth, 560);
+        var panel = new Rect(width / 2f - panelWidth / 2f, 24, panelWidth, 580);
         Panel(panel);
         Shadowed(new Rect(panel.x, panel.y + 16, panel.width, 50), "How to Play", headerStyle, Gold);
 
         string text =
             "<b>Goal</b>\n" +
-            "Explore the nine rooms of the world, find the boss in its lair and defeat it to win.\n" +
-            "Rumour says a <color=#9be9ff><b>Crystal Sword</b></color> lies hidden somewhere. With it, the boss falls in " +
-            "3 hits instead of 10.\n\n" +
+            "Explore the nine rooms, find the boss's lair (a different corner room each level) and defeat it to clear the level. Each level the world " +
+            "returns with stronger, more aggressive monsters and a tougher boss, and you gain a heart. One life: " +
+            "if you fall, the run is over.\n" +
+            "A <color=#9be9ff><b>Crystal Sword</b></color> is hidden somewhere each level, in a different spot each time. " +
+            "With it, the boss falls in far fewer hits and your lightning burns through bushes.\n" +
+            "Score: kills x level, minus 100 for every heart of damage taken.\n\n" +
             "<b>Controls</b>\n" +
             "Move:  WASD, Arrow keys or Left stick\n" +
             "Attack:  Space, J or the A button\n" +
@@ -219,17 +233,18 @@ public class TitleScreen : MonoBehaviour
             "<b>Tips</b>\n" +
             "Walk through a doorway to move to the next room.\n" +
             "Monsters sometimes drop hearts that restore your health.\n" +
+            "At half health or more, your sword also shoots a lightning bolt that deals the same damage.\n" +
             "The boss charges and breathes fire. Slash fireballs out of the air!";
         GUI.Label(new Rect(panel.x + 40, panel.y + 80, panel.width - 80, panel.height - 100), text, bodyStyle);
 
-        Item(new Rect(width / 2f - 150, panel.yMax + 20, 300, ItemHeight), "Back", 0);
+        Item(new Rect(width / 2f - 150, panel.yMax + 8, 300, ItemHeight), "Back", 0);
         Hint(width, "Enter or Esc to go back");
     }
 
     void DrawOptions(float width)
     {
         float panelWidth = 640f;
-        var panel = new Rect(width / 2f - panelWidth / 2f, 110, panelWidth, 420);
+        var panel = new Rect(width / 2f - panelWidth / 2f, 90, panelWidth, 490);
         Panel(panel);
         Shadowed(new Rect(panel.x, panel.y + 16, panel.width, 50), "Options", headerStyle, Gold);
 
@@ -237,6 +252,7 @@ public class TitleScreen : MonoBehaviour
         {
             Mathf.RoundToInt(GameSettings.MusicVolume * 100f) + "%",
             Mathf.RoundToInt(GameSettings.SfxVolume * 100f) + "%",
+            Mathf.RoundToInt(GameSettings.HudScale * 100f) + "%",
             GameSettings.Fullscreen ? "On" : "Off",
         };
 
@@ -347,7 +363,7 @@ public class TitleScreen : MonoBehaviour
         subtitleStyle = new GUIStyle(GUI.skin.label) { fontSize = 26, fontStyle = FontStyle.Italic, alignment = TextAnchor.MiddleCenter };
         itemStyle = new GUIStyle(GUI.skin.label) { fontSize = 34, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         headerStyle = new GUIStyle(GUI.skin.label) { fontSize = 44, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-        bodyStyle = new GUIStyle(GUI.skin.label) { fontSize = 22, wordWrap = true, richText = true };
+        bodyStyle = new GUIStyle(GUI.skin.label) { fontSize = 19, wordWrap = true, richText = true };
         bodyStyle.normal.textColor = Color.white;
         hintStyle = new GUIStyle(GUI.skin.label) { fontSize = 18, alignment = TextAnchor.MiddleCenter };
         valueStyle = new GUIStyle(GUI.skin.label) { fontSize = 30, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };

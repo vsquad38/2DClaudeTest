@@ -12,8 +12,8 @@ public static class ChiptuneSynth
 
     public struct Clips
     {
-        public AudioClip music, bossMusic, swing, hit, enemyDie, hurt, pickup, victory, gameOver, fireball, itemGet,
-            menuMove, menuSelect;
+        public AudioClip music, bossMusic, dangerMusic, swing, hit, enemyDie, hurt, pickup, victory, gameOver, fireball, itemGet,
+            menuMove, menuSelect, zap, burn;
     }
 
     public static Clips GenerateAll()
@@ -30,10 +30,13 @@ public static class ChiptuneSynth
             gameOver = Save("GameOver", Notes(new[] { "E5", "D#5", "D5", "C#5", "C5", "C5", "C5", "-" }, 0.18f, 0.5f, 0.3f)),
             fireball = Save("Fireball", FireballWhoosh()),
             itemGet = Save("ItemGet", Notes(new[] { "G5", "A5", "B5", "D6", "-", "B5", "D6", "G6", "G6", "G6" }, 0.09f, 0.25f, 0.3f)),
+            zap = Save("Zap", Zap()),
+            burn = Save("Burn", Burn()),
             menuMove = Save("MenuMove", Notes(new[] { "E6" }, 0.035f, 0.5f, 0.2f)),
             menuSelect = Save("MenuSelect", Notes(new[] { "C6", "G6" }, 0.05f, 0.25f, 0.25f)),
             music = Save("Music", Music()),
             bossMusic = Save("BossMusic", BossMusic()),
+            dangerMusic = Save("DangerMusic", DangerMusic()),
         };
     }
 
@@ -108,6 +111,43 @@ public static class ChiptuneSynth
             phase += Mathf.Lerp(90f, 160f, k) / SampleRate;
             float env = Mathf.Sin(Mathf.PI * k);
             s[i] = (lp * 0.8f + Square(phase, 0.5f) * 0.15f) * env * 0.6f;
+        }
+        return s;
+    }
+
+    static float[] Zap()
+    {
+        // Crackling upward sweep: thin pulse wave rising fast, with a little noise.
+        int n = (int)(0.18f * SampleRate);
+        var s = new float[n];
+        var rng = new System.Random(5);
+        float phase = 0f;
+        for (int i = 0; i < n; i++)
+        {
+            float k = (float)i / n;
+            phase += Mathf.Lerp(500f, 1800f, Mathf.Sqrt(k)) / SampleRate;
+            float noise = (float)rng.NextDouble() * 2f - 1f;
+            float env = (1f - k) * (1f - k);
+            s[i] = (Square(phase, 0.125f) * 0.7f + noise * 0.3f) * env * 0.3f;
+        }
+        return s;
+    }
+
+    static float[] Burn()
+    {
+        // A whoosh of flame: low-passed noise swelling then dying away, with random crackling pops.
+        int n = (int)(0.45f * SampleRate);
+        var s = new float[n];
+        var rng = new System.Random(7);
+        float lp = 0f;
+        for (int i = 0; i < n; i++)
+        {
+            float k = (float)i / n;
+            float noise = (float)rng.NextDouble() * 2f - 1f;
+            lp += 0.15f * (noise - lp);
+            float env = Mathf.Min(1f, k * 8f) * (1f - k);
+            float pop = rng.NextDouble() < 0.004 ? (float)rng.NextDouble() * 0.8f : 0f;
+            s[i] = (lp * 1.6f + pop) * env * 0.45f;
         }
         return s;
     }
@@ -290,6 +330,95 @@ public static class ChiptuneSynth
                     s[start + i] += Mathf.Sin(phase * 2f * Mathf.PI) * (1f - k) * (offset == 0 ? 0.45f : 0.3f);
                 }
             }
+        }
+
+        return s;
+    }
+
+    // ---------- Danger music (low health) ----------
+
+    // Fast and urgent: hammering repeated notes over a pounding octave bass, with kick and snare.
+    static readonly string[] DangerMelody =
+    {
+        "D5 D5 - D5 F5 . E5 .",
+        "D5 D5 - D5 A5 . G#5 .",
+        "D5 D5 - D5 F5 . E5 D5",
+        "C#5 . E5 . A4 . . -",
+        "F5 F5 - F5 A5 . G5 .",
+        "F5 F5 - F5 C6 . B5 .",
+        "A5 G#5 A5 B5 C6 C#6 D6 .",
+        "D6 . A5 . D5 . - -",
+    };
+
+    static readonly string[] DangerBass =
+    {
+        "D2 D3 D2 D3 D2 D3 D2 D3",
+        "D2 D3 D2 D3 D2 D3 D2 D3",
+        "D2 D3 D2 D3 D2 D3 D2 D3",
+        "A1 A2 A1 A2 A1 A2 C#2 E2",
+        "F2 F3 F2 F3 F2 F3 F2 F3",
+        "F2 F3 F2 F3 F2 F3 F2 F3",
+        "E2 E3 E2 E3 G#2 G#3 A2 A3",
+        "D2 D3 D2 D3 A1 A2 D2 -",
+    };
+
+    static float[] DangerMusic()
+    {
+        const float bpm = 168f;
+        float eighth = 60f / bpm / 2f;
+        int eighthSamples = (int)(eighth * SampleRate);
+        int bars = DangerMelody.Length;
+        var s = new float[eighthSamples * 8 * bars];
+
+        // Lead: bright 25% pulse; repeated notes are re-struck for urgency.
+        var tokens = new List<string>();
+        foreach (var bar in DangerMelody) tokens.AddRange(bar.Split(' '));
+        for (int i = 0; i < tokens.Count; i++)
+        {
+            if (tokens[i] == "." || tokens[i] == "-") continue;
+            int len = 1;
+            while (i + len < tokens.Count && tokens[i + len] == ".") len++;
+            AddTone(s, i * eighthSamples, len * eighthSamples - eighthSamples / 4, Freq(tokens[i]), Wave.Square, 0.25f, 0.13f);
+        }
+
+        // Bass: octave-jumping triangle on every eighth.
+        for (int bar = 0; bar < bars; bar++)
+        {
+            var notes = DangerBass[bar].Split(' ');
+            for (int e = 0; e < notes.Length; e++)
+            {
+                if (notes[e] == "-") continue;
+                AddTone(s, (bar * 8 + e) * eighthSamples, eighthSamples - eighthSamples / 5, Freq(notes[e]), Wave.Triangle, 0.5f, 0.3f);
+            }
+        }
+
+        // Drums: kick on beats 1 and 3, noisy snare on 2 and 4, soft hats on the off-beats.
+        var rng = new System.Random(6);
+        for (int beat = 0; beat < bars * 4; beat++)
+        {
+            int start = beat * 2 * eighthSamples;
+            if (beat % 2 == 0)
+            {
+                int len = SampleRate / 10;
+                float phase = 0f;
+                for (int i = 0; i < len && start + i < s.Length; i++)
+                {
+                    float k = (float)i / len;
+                    phase += Mathf.Lerp(120f, 45f, k) / SampleRate;
+                    s[start + i] += Mathf.Sin(phase * 2f * Mathf.PI) * (1f - k) * 0.4f;
+                }
+            }
+            else
+            {
+                int len = SampleRate / 12;
+                for (int i = 0; i < len && start + i < s.Length; i++)
+                    s[start + i] += ((float)rng.NextDouble() * 2f - 1f) * (1f - (float)i / len) * 0.18f;
+            }
+
+            int hat = start + eighthSamples;
+            int hatLen = SampleRate / 50;
+            for (int i = 0; i < hatLen && hat + i < s.Length; i++)
+                s[hat + i] += ((float)rng.NextDouble() * 2f - 1f) * (1f - (float)i / hatLen) * 0.05f;
         }
 
         return s;

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Simple monster AI: wanders randomly and chases the player when close. Hurts the player on contact.
+// Stats below are the level-1 values; higher levels scale them up at runtime (see ApplyLevel).
 [RequireComponent(typeof(Rigidbody2D), typeof(Health))]
 public class Enemy : MonoBehaviour
 {
@@ -20,6 +21,8 @@ public class Enemy : MonoBehaviour
     public float changeDirectionTime = 1.5f;
     public GameObject dropOnDeath;
     [Range(0f, 1f)] public float dropChance = 0.3f;
+    // Points for killing this monster (multiplied by the level).
+    public int scoreValue = 100;
 
     Rigidbody2D rb;
     Health health;
@@ -28,6 +31,17 @@ public class Enemy : MonoBehaviour
     Vector2 wanderDir;
     float nextDirectionChange;
     Vector3 spawnPosition;
+
+    // Effective (level-scaled) stats.
+    float speed;
+    float range;
+    int damage;
+    bool chases;
+
+    public float Speed => speed;
+    public float ChaseRange => range;
+    public int Damage => damage;
+    public bool Chases => chases;
 
     void Awake()
     {
@@ -38,6 +52,22 @@ public class Enemy : MonoBehaviour
         health.Died += OnDied;
         spawnPosition = transform.position;
         All.Add(this);
+        ApplyLevel(GameSession.Level);
+    }
+
+    // Each level makes monsters faster, tougher, longer-sighted and harder-hitting.
+    // From level 3 wanderers start chasing; from level 4 bats home in on you too.
+    public void ApplyLevel(int level)
+    {
+        if (health == null) health = GetComponent<Health>();
+        int n = level - 1;
+        speed = moveSpeed * Mathf.Min(2.2f, 1f + 0.15f * n);
+        range = Mathf.Min(12f, chaseRange + 1.5f * n);
+        damage = contactDamage + n / 3;
+        health.SetMax(health.maxHealth + n / 2);
+        chases = behaviour == Behaviour.Chase
+            || (behaviour == Behaviour.Wander && level >= 3)
+            || (behaviour == Behaviour.Erratic && level >= 4);
     }
 
     void OnDestroy()
@@ -74,9 +104,9 @@ public class Enemy : MonoBehaviour
 
         Vector2 dir = wanderDir;
         bool playerAlive = player != null && !player.GetComponent<Health>().IsDead;
-        bool playerNear = playerAlive && Vector2.Distance(player.position, transform.position) < chaseRange;
+        bool playerNear = playerAlive && Vector2.Distance(player.position, transform.position) < range;
 
-        if (behaviour == Behaviour.Chase && playerNear)
+        if (chases && playerNear)
         {
             dir = ((Vector2)(player.position - transform.position)).normalized;
         }
@@ -94,7 +124,7 @@ public class Enemy : MonoBehaviour
             nextDirectionChange = Time.time + 0.5f;
         }
 
-        rb.linearVelocity = dir * moveSpeed;
+        rb.linearVelocity = dir * speed;
         if (dir.x != 0f) sr.flipX = dir.x < 0f;
     }
 
@@ -129,11 +159,12 @@ public class Enemy : MonoBehaviour
         var target = collision.collider.GetComponent<PlayerController>();
         if (target == null) return;
         Vector2 away = ((Vector2)(target.transform.position - transform.position)).normalized;
-        target.GetComponent<Health>().TakeDamage(contactDamage, away * contactKnockback);
+        target.GetComponent<Health>().TakeDamage(damage, away * contactKnockback);
     }
 
     void OnDied()
     {
+        GameSession.AddKill(scoreValue);
         if (dropOnDeath != null && Random.value < dropChance)
             Instantiate(dropOnDeath, transform.position, Quaternion.identity, transform.parent); // stays with its room
         Destroy(gameObject);

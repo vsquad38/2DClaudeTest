@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -56,12 +57,12 @@ public static class ZeldaBoardBuilder
             "..##........v.....##..",
             "..##..............##..",
         },
-        // Row 0, col 2 — the lake
+        // Row 0, col 2 — the lake (sword nook in the top-right corner behind the bushes)
         new[]
         {
-            "......................",
-            "...wwwwww.............",
-            "..wwwwwwwww.....v.....",
+            "....................bS",
+            "...wwwwww...........b.",
+            "..wwwwwwwww.....v...b.",
             "..wwwwwwwww...........",
             "...wwwwwww......bb....",
             "....wwww........bb....",
@@ -72,12 +73,12 @@ public static class ZeldaBoardBuilder
             "....s.........wwww....",
             "......................",
         },
-        // Row 1, col 0 — the hedge maze
+        // Row 1, col 0 — the hedge maze (sword nook in the hedge's top-left corner)
         new[]
         {
             "......................",
             ".bbbbbbb....bbbbbbbb..",
-            ".b..................b.",
+            ".bS.................b.",
             ".b..s.....bb.....v..b.",
             ".b........bb........b.",
             "......................",
@@ -120,23 +121,24 @@ public static class ZeldaBoardBuilder
             "..########..########..",
             "......................",
         },
-        // Row 2, col 0 — the graveyard
+        // Row 2, col 0 — the graveyard (sword nook in the bottom-left corner behind a tombstone).
+        // Tombstone rows are two tiles apart so there's comfortable room to walk between them.
         new[]
         {
             "......................",
             "..#...#.......#...#...",
             "......................",
+            "......................",
             "..#...#...#...#...#...",
             "........v.............",
-            "..#...#.......#...#...",
             "..........s...........",
             "..#...#.......#...#...",
             "..............v.......",
-            "..#...#...#...#...#...",
             "......................",
-            "......................",
+            ".#....#...#...#...#...",
+            "S#....................",
         },
-        // Row 2, col 1 — the river crossing
+        // Row 2, col 1 — the river crossing (sword nook in the bottom-right corner behind the bushes)
         new[]
         {
             "......................",
@@ -149,22 +151,23 @@ public static class ZeldaBoardBuilder
             "......................",
             "..bb..............bb..",
             "..bb......v.......bb..",
-            "......................",
-            "......................",
+            "....................b.",
+            "....................bS",
         },
-        // Row 2, col 2 — the boss arena
+        // Row 2, col 2 — the arena. 'B' is only the boss's starting point: each level the LevelDirector moves
+        // the boss to a random corner room and clears that room's regular monsters.
         new[]
         {
             "......................",
             "......................",
             "...##............##...",
-            "...##............##...",
+            "...##....m.......##...",
             "......................",
             "..........B...........",
-            "......................",
+            "...............v......",
             "......................",
             "...##............##...",
-            "...##............##...",
+            "...##.....s......##...",
             "......................",
             "......................",
         },
@@ -216,6 +219,9 @@ public static class ZeldaBoardBuilder
         { 'O', new Color32(220, 130, 50, 255) },  // orange
         { 'o', new Color32(150, 80, 30, 255) },   // dark orange
         { 'E', new Color32(90, 90, 100, 255) },   // empty heart grey
+        { 'N', new Color32(225, 215, 190, 255) }, // bone
+        { 'n', new Color32(150, 140, 120, 255) }, // bone shadow
+        { 'k', new Color32(45, 30, 25, 255) },    // crack / scorch
         { 'C', new Color32(140, 235, 255, 255) }, // crystal
         { 'c', new Color32(40, 120, 200, 255) },  // crystal outline
     };
@@ -300,6 +306,170 @@ public static class ZeldaBoardBuilder
         "..KKRRKKKKRRKK..",
         "..KRRK....KRRK..",
         "..KKK......KKK..",
+    };
+
+    // Lightning bolt fired from the sword at full health (points up; rotated to the swing direction).
+    static readonly string[] BoltArt =
+    {
+        "..........YW....",
+        ".........YW.....",
+        "........YW......",
+        ".......YWW......",
+        "......YWWYYYY...",
+        "..........YW....",
+        ".........YW.....",
+        "........YWW.....",
+        ".......YWWYYYY..",
+        "...........YW...",
+        "..........YW....",
+        ".........YW.....",
+        "........YW......",
+        ".......Y........",
+        "................",
+        "................",
+    };
+
+    // The Crystal Sword's bolt: thicker, crystal-blue with a white-hot core and a dark outline.
+    static readonly string[] CrystalBoltArt =
+    {
+        "..........cWc...",
+        ".........cWWc...",
+        "........cWWc....",
+        ".......cWWCc....",
+        "......cWWCCCCc..",
+        ".....ccccCWWc...",
+        "........cWWc....",
+        ".......cWWCc....",
+        "......cWWCCCCc..",
+        ".....ccccCWWc...",
+        "........cWWc....",
+        ".......cWWc.....",
+        "......cWc.......",
+        ".....cc.........",
+        "................",
+        "................",
+    };
+
+    static readonly string[] FlameArt =
+    {
+        "................",
+        "................",
+        ".......O........",
+        "......OYO.......",
+        ".....OYYO.......",
+        "....OYYWYO......",
+        "....OYWWYO..O...",
+        "...OYYWWYYO.OO..",
+        "...OYWWWWYO.OYO.",
+        "..OYYWWWWYYOOYO.",
+        "..OYWWWWWWYYYO..",
+        "..OYYWWWWYYYO...",
+        "...OOYYYYYOO....",
+        ".....OOOOOO.....",
+        "................",
+        "................",
+    };
+
+    // ---------- Dangerous-landscape art (used from level 2 up) ----------
+
+    static readonly string[] ThornBushArt =
+    {
+        "................",
+        "..p....p....p...",
+        "...p..pp...p....",
+        "..ppPpBBpPpp....",
+        ".pBBBBBBBBBBp...",
+        "..pBBpBBpBBBBp..",
+        ".pBBBBBBBBBBBBp.",
+        "ppBpBBBBBpBBBBpp",
+        ".pBBBBpBBBBBpBp.",
+        "..pBBBBBBBBBBBp.",
+        ".pBpBBBBBpBBBp..",
+        "..pBBBBpBBBBBp..",
+        "...ppBBBBBBpp...",
+        "..p..pppppp..p..",
+        ".p............p.",
+        "................",
+    };
+
+    static readonly string[] CrackArt =
+    {
+        "................",
+        "................",
+        "......k.........",
+        ".......k........",
+        ".......k....k...",
+        "........k..k....",
+        "........kkk.....",
+        ".......k..k.....",
+        "......k....k....",
+        ".....k......k...",
+        "....k.......kk..",
+        "...k............",
+        "................",
+        "................",
+        "................",
+        "................",
+    };
+
+    static readonly string[] BonesArt =
+    {
+        "................",
+        "................",
+        "................",
+        "................",
+        "..NN........NN..",
+        ".NNNn......NNNn.",
+        "...nNN....NNn...",
+        ".....NNNNNN.....",
+        ".....nNNNNn.....",
+        "...NNn....nNN...",
+        ".NNNn......NNNn.",
+        "..nn........nn..",
+        "................",
+        "................",
+        "................",
+        "................",
+    };
+
+    static readonly string[] SkullArt =
+    {
+        "................",
+        "................",
+        "................",
+        ".....NNNNNN.....",
+        "....NNNNNNNN....",
+        "...NNNNNNNNNN...",
+        "...NNkkNNkkNN...",
+        "...NNkkNNkkNN...",
+        "...nNNNkkNNNn...",
+        "....nNNNNNNn....",
+        ".....NkNkNkN....",
+        ".....nNNNNNn....",
+        "................",
+        "................",
+        "................",
+        "................",
+    };
+
+    static readonly string[] EmberArt =
+    {
+        "................",
+        "................",
+        "................",
+        "......R.........",
+        ".....ROR........",
+        "....ROYOR.......",
+        ".....ROYOR...R..",
+        "......ROYOR.ROR.",
+        ".......ROYOROR..",
+        "........ROOR....",
+        ".........RR.....",
+        "................",
+        "................",
+        "................",
+        "................",
+        "................",
     };
 
     static readonly string[] FireballArt =
@@ -576,6 +746,11 @@ public static class ZeldaBoardBuilder
         var bossFrames = new[] { SaveSprite("Boss", FromArt(BossArt)), SaveSprite("Boss_Step", FromArt(BossStepArt)) };
         var bossAttackSprite = SaveSprite("Boss_Attack", FromArt(BossAttackArt));
         var fireballSprite = SaveSprite("Fireball", FromArt(FireballArt));
+        var boltSprite = SaveSprite("SwordBolt", FromArt(BoltArt));
+        var crystalBoltSprite = SaveSprite("CrystalBolt", FromArt(CrystalBoltArt));
+        var glowSprite = SaveSprite("Glow", GlowTexture());
+        var flameTex = FromArt(FlameArt);
+        var flameFrames = new[] { SaveSprite("Flame", flameTex), SaveSprite("Flame_Flicker", Shift(flameTex, 0, 1)) };
         var slimeTex = FromArt(SlimeArt);
         var slimeFrames = new[] { SaveSprite("Slime", slimeTex), SaveSprite("Slime_Squash", Squash(slimeTex, 1.12f, 0.82f)) };
         var batFrames = new[] { SaveSprite("Bat", FromArt(BatArt)), SaveSprite("Bat_Flap", FromArt(BatWingsDownArt)) };
@@ -593,9 +768,20 @@ public static class ZeldaBoardBuilder
         var grassSprite = SaveSprite("Grass", GrassTexture());
         var wallSprite = SaveSprite("Wall", WallTexture());
         var waterSprite = SaveSprite("Water", WaterTexture());
+        var scorchedSprite = SaveSprite("ScorchedGrass", ScorchedGrassTexture());
+        var thornSprite = SaveSprite("ThornBush", FromArt(ThornBushArt));
+        var crackSprite = SaveSprite("Crack", FromArt(CrackArt));
+        var bonesSprite = SaveSprite("Bones", FromArt(BonesArt));
+        var skullSprite = SaveSprite("Skull", FromArt(SkullArt));
+        // Embers flicker: the second frame burns hotter (orange -> yellow, yellow -> white).
+        var emberHot = EmberArt.Select(row => row.Replace('Y', 'W').Replace('O', 'Y')).ToArray();
+        var emberFrames = new[] { SaveSprite("Ember", FromArt(EmberArt)), SaveSprite("Ember_Hot", FromArt(emberHot)) };
 
         // --- Tiles ---
         var waterTile = SaveTile("WaterTile", waterSprite, Tile.ColliderType.Grid);
+        var scorchedTile = SaveTile("ScorchedGrassTile", scorchedSprite, Tile.ColliderType.None);
+        // Thorns block like a full tile, so their spiky outline never changes how passages fit the player.
+        var thornTile = SaveTile("ThornBushTile", thornSprite, Tile.ColliderType.Grid);
         var grassTile = SaveTile("GrassTile", grassSprite, Tile.ColliderType.None);
         var wallTile = SaveTile("WallTile", wallSprite, Tile.ColliderType.Grid);
         var bushTile = SaveTile("BushTile", bushSprite, Tile.ColliderType.Sprite);
@@ -675,6 +861,48 @@ public static class ZeldaBoardBuilder
         var fireballPrefab = PrefabUtility.SaveAsPrefabAsset(fireballGo, PrefabDir + "/Fireball.prefab");
         Object.DestroyImmediate(fireballGo);
 
+        // --- Burning-bush flames (left behind when a Crystal Sword bolt burns a bush) ---
+        var flameGo = new GameObject("BushFire");
+        var flameSr = flameGo.AddComponent<SpriteRenderer>();
+        flameSr.sprite = flameFrames[0];
+        flameSr.sortingOrder = 6;
+        var flameAnim = flameGo.AddComponent<SpriteAnimator>();
+        flameAnim.frames = flameFrames;
+        flameAnim.fps = 14f;
+        var flameFade = flameGo.AddComponent<FadeOut>();
+        flameFade.delay = 0.3f;
+        flameFade.duration = 0.35f;
+        flameFade.grow = 0.4f;
+        var flamePrefab = PrefabUtility.SaveAsPrefabAsset(flameGo, PrefabDir + "/BushFire.prefab");
+        Object.DestroyImmediate(flameGo);
+
+        // --- Sword beam prefab (lightning bolt fired while health is high enough) ---
+        var beamGo = new GameObject("SwordBeam");
+        beamGo.transform.localScale = Vector3.one * 1.3f;
+        var beamSr = beamGo.AddComponent<SpriteRenderer>();
+        beamSr.sprite = boltSprite;
+        beamSr.sortingOrder = 7;
+        var beamRb = beamGo.AddComponent<Rigidbody2D>();
+        beamRb.gravityScale = 0;
+        beamRb.freezeRotation = true;
+        beamRb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        var beamCol = beamGo.AddComponent<BoxCollider2D>();
+        beamCol.isTrigger = true;
+        beamCol.size = new Vector2(0.4f, 0.8f);
+        var beam = beamGo.AddComponent<SwordBeam>();
+        beam.crystalSprite = crystalBoltSprite;
+        beam.burnEffectPrefab = flamePrefab;
+        var glowGo = new GameObject("Glow");
+        glowGo.transform.SetParent(beamGo.transform, false);
+        glowGo.transform.localScale = Vector3.one * 2.2f;
+        var glowSr = glowGo.AddComponent<SpriteRenderer>();
+        glowSr.sprite = glowSprite;
+        glowSr.color = new Color(0.55f, 0.95f, 1f, 0.45f);
+        glowSr.sortingOrder = 6;
+        beam.glow = glowSr;
+        var beamPrefab = PrefabUtility.SaveAsPrefabAsset(beamGo, PrefabDir + "/SwordBeam.prefab").GetComponent<SwordBeam>();
+        Object.DestroyImmediate(beamGo);
+
         // --- Player & monsters ---
         GameObject player = null;
         var monsters = new GameObject("Monsters");
@@ -699,16 +927,16 @@ public static class ZeldaBoardBuilder
             switch (ch)
             {
                 case 'P':
-                    player = CreatePlayer(pos, playerDown, playerUp, playerSide, swordSprite);
+                    player = CreatePlayer(pos, playerDown, playerUp, playerSide, swordSprite, beamPrefab);
                     break;
                 case 's':
-                    CreateMonster("Slime", pos, slimeFrames, 3f, parent, bounds, Enemy.Behaviour.Wander, 1.2f, 2, heartPrefab);
+                    CreateMonster("Slime", pos, slimeFrames, 3f, parent, bounds, Enemy.Behaviour.Wander, 1.2f, 2, 100, heartPrefab);
                     break;
                 case 'v':
-                    CreateMonster("Bat", pos, batFrames, 10f, parent, bounds, Enemy.Behaviour.Erratic, 2.5f, 1, heartPrefab);
+                    CreateMonster("Bat", pos, batFrames, 10f, parent, bounds, Enemy.Behaviour.Erratic, 2.5f, 1, 150, heartPrefab);
                     break;
                 case 'm':
-                    CreateMonster("Moblin", pos, moblinFrames, 6f, parent, bounds, Enemy.Behaviour.Chase, 2f, 3, heartPrefab);
+                    CreateMonster("Moblin", pos, moblinFrames, 6f, parent, bounds, Enemy.Behaviour.Chase, 2f, 3, 250, heartPrefab);
                     break;
                 case 'B':
                     CreateBoss(pos, bossFrames, bossAttackSprite, parent, bounds, fireballPrefab);
@@ -747,6 +975,20 @@ public static class ZeldaBoardBuilder
         roomManager.roomMonsters = roomContainers;
         roomManager.bossRoomIndex = bossRoom;
 
+        // Level setup (tint, extra monsters, which sword nook is used) happens at runtime.
+        var director = roomsGo.AddComponent<LevelDirector>();
+        director.rooms = roomManager;
+        director.ground = ground;
+        director.walls = walls;
+        director.grassTile = grassTile;
+        director.scorchedGrassTile = scorchedTile;
+        director.bushTile = bushTile;
+        director.thornBushTile = thornTile;
+        director.crackSprite = crackSprite;
+        director.bonesSprite = bonesSprite;
+        director.skullSprite = skullSprite;
+        director.emberFrames = emberFrames;
+
         // --- HUD ---
         var hud = new GameObject("HUD");
         Undo.RegisterCreatedObjectUndo(hud, "Build Zelda Board");
@@ -770,15 +1012,26 @@ public static class ZeldaBoardBuilder
         am.victory = clips.victory;
         am.gameOver = clips.gameOver;
         am.bossMusic = clips.bossMusic;
+        am.dangerMusic = clips.dangerMusic;
         am.fireball = clips.fireball;
         am.itemGet = clips.itemGet;
+        am.zap = clips.zap;
+        am.burn = clips.burn;
+
+        // Crystal Sword bolts burn bushes on the walls tilemap.
+        if (player != null)
+        {
+            var playerController = player.GetComponent<PlayerController>();
+            playerController.walls = walls;
+            playerController.bushTile = bushTile;
+        }
 
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         EditorSceneManager.SaveOpenScenes();
         Debug.Log($"Zelda board built: {spawns.Count} spawns. Press Play! Move with WASD/arrows, attack with Space/J.");
     }
 
-    static GameObject CreatePlayer(Vector3 pos, Sprite[] down, Sprite[] up, Sprite[] side, Sprite swordSprite)
+    static GameObject CreatePlayer(Vector3 pos, Sprite[] down, Sprite[] up, Sprite[] side, Sprite swordSprite, SwordBeam beamPrefab)
     {
         var go = new GameObject("Player");
         Undo.RegisterCreatedObjectUndo(go, "Build Zelda Board");
@@ -799,9 +1052,11 @@ public static class ZeldaBoardBuilder
         rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
         rb.interpolation = RigidbodyInterpolation2D.Interpolate;
 
-        var col = go.AddComponent<BoxCollider2D>();
-        col.size = new Vector2(0.7f, 0.8f);
-        col.offset = new Vector2(0, -0.05f);
+        // Slim capsule with rounded ends: slides along wall corners instead of snagging on them.
+        var col = go.AddComponent<CapsuleCollider2D>();
+        col.direction = CapsuleDirection2D.Vertical;
+        col.size = new Vector2(0.6f, 0.75f);
+        col.offset = new Vector2(0, -0.08f);
 
         var health = go.AddComponent<Health>();
         health.maxHealth = 5;
@@ -821,11 +1076,13 @@ public static class ZeldaBoardBuilder
 
         var controller = go.AddComponent<PlayerController>();
         controller.sword = hitbox;
+        controller.beamPrefab = beamPrefab;
+        controller.moveSpeed = 6f;
         return go;
     }
 
     static void CreateMonster(string name, Vector3 pos, Sprite[] frames, float fps, Transform parent, Rect bounds,
-        Enemy.Behaviour behaviour, float speed, int hp, GameObject drop)
+        Enemy.Behaviour behaviour, float speed, int hp, int score, GameObject drop)
     {
         var go = new GameObject(name);
         go.transform.SetParent(parent, false);
@@ -857,6 +1114,7 @@ public static class ZeldaBoardBuilder
         enemy.moveSpeed = speed;
         enemy.dropOnDeath = drop;
         enemy.bounds = bounds;
+        enemy.scoreValue = score;
     }
 
     static void CreateBoss(Vector3 pos, Sprite[] walkFrames, Sprite attackFrame, Transform parent, Rect roomBounds, GameObject fireballPrefab)
@@ -880,7 +1138,7 @@ public static class ZeldaBoardBuilder
         var col = go.AddComponent<CircleCollider2D>();
         col.radius = 0.38f;
 
-        // 30 HP: 10 hits with the basic sword (3 dmg each), 3 hits with the Crystal Sword (10 dmg each).
+        // Boss HP is set at runtime from its hit counts and the level (see Boss.ApplyLevel).
         var health = go.AddComponent<Health>();
         health.maxHealth = 30;
         // Long enough that one swing counts once, shorter than the 0.3 s between swings so none are wasted.
@@ -1006,6 +1264,40 @@ public static class ZeldaBoardBuilder
                 bool isMortar = y % 4 == 0 || (x + offset) % 8 == 0;
                 bool isHighlight = !isMortar && (y % 4 == 3);
                 tex.SetPixel(x, y, isMortar ? mortar : isHighlight ? hi : stone);
+            }
+        tex.Apply();
+        return tex;
+    }
+
+    // Burnt, ashy ground for the later levels, with the odd glowing ember.
+    static Texture2D ScorchedGrassTexture()
+    {
+        var tex = NewTexture();
+        var rng = new System.Random(11);
+        var baseCol = new Color32(92, 96, 58, 255);
+        var ash = new Color32(70, 66, 58, 255);
+        var dry = new Color32(118, 112, 70, 255);
+        var ember = new Color32(205, 95, 40, 255);
+        for (int y = 0; y < 16; y++)
+            for (int x = 0; x < 16; x++)
+            {
+                int n = rng.Next(100);
+                tex.SetPixel(x, y, n < 14 ? ash : n < 20 ? dry : n < 21 ? ember : baseCol);
+            }
+        tex.Apply();
+        return tex;
+    }
+
+    // Soft round halo: white with alpha fading out from the centre (tinted at runtime).
+    static Texture2D GlowTexture()
+    {
+        var tex = NewTexture();
+        for (int y = 0; y < 16; y++)
+            for (int x = 0; x < 16; x++)
+            {
+                float d = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(8f, 8f)) / 8f;
+                float a = Mathf.Clamp01(1f - d);
+                tex.SetPixel(x, y, new Color(1f, 1f, 1f, a * a));
             }
         tex.Apply();
         return tex;
