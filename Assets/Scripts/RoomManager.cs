@@ -12,6 +12,8 @@ public class RoomManager : MonoBehaviour
     public Vector2 roomSize = new Vector2(24, 14);
     public float transitionTime = 0.7f;
     public float walkInDistance = 2f;
+    // Room index (row * cols + col) that holds the boss; it gets the boss music. -1 = none.
+    public int bossRoomIndex = -1;
 
     public PlayerController player;
     public Camera cam;
@@ -35,6 +37,7 @@ public class RoomManager : MonoBehaviour
         for (int i = 0; i < roomMonsters.Length; i++)
             SetRoomActive(i, i == Index(Current));
         Visited[Index(Current)] = true;
+        AudioManager.SetBossMusic(Index(Current) == bossRoomIndex);
     }
 
     void Update()
@@ -55,6 +58,7 @@ public class RoomManager : MonoBehaviour
         rb.bodyType = RigidbodyType2D.Kinematic;
 
         SetRoomActive(Index(Current), false);
+        foreach (var fireball in FindObjectsByType<Fireball>()) Destroy(fireball.gameObject);
 
         Vector2 step = new Vector2(next.x - Current.x, Current.y - next.y); // rows grow downward
         Vector3 camFrom = cam.transform.position;
@@ -75,6 +79,7 @@ public class RoomManager : MonoBehaviour
         Current = next;
         Visited[Index(next)] = true;
         SetRoomActive(Index(next), true);
+        if (!Boss.Defeated) AudioManager.SetBossMusic(Index(next) == bossRoomIndex);
 
         rb.bodyType = RigidbodyType2D.Dynamic;
         player.Frozen = false;
@@ -86,8 +91,13 @@ public class RoomManager : MonoBehaviour
         if (index < 0 || index >= roomMonsters.Length || roomMonsters[index] == null) return;
         foreach (Transform child in roomMonsters[index])
         {
-            var enemy = child.GetComponent<Enemy>();
-            if (active && enemy != null) enemy.ResetToSpawn();
+            if (active)
+            {
+                var enemy = child.GetComponent<Enemy>();
+                if (enemy != null) enemy.ResetToSpawn();
+                var boss = child.GetComponent<Boss>();
+                if (boss != null) boss.ResetToSpawn();
+            }
             child.gameObject.SetActive(active);
         }
     }

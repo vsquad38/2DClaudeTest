@@ -16,7 +16,7 @@ public static class ZeldaBoardBuilder
     // Each layout below is a room's 22x12 interior; the outer wall is added automatically, with a
     // 2-tile doorway cut in the middle of every side that touches another room.
     // '#' wall, 'b' bush, 'w' water, '.' grass, 'P' player start,
-    // 's' slime (wanders), 'v' bat (erratic), 'm' moblin (chases)
+    // 's' slime (wanders), 'v' bat (erratic), 'm' moblin (chases), 'B' boss, 'S' hidden upgraded sword
     const int RoomW = 24;
     const int RoomH = 14;
     const int WorldCols = 3;
@@ -24,13 +24,13 @@ public static class ZeldaBoardBuilder
 
     static readonly string[][] Rooms =
     {
-        // Row 0, col 0 — the woods
+        // Row 0, col 0 — the woods (the Crystal Sword is hidden in the top-right nook, behind the bushes)
         new[]
         {
-            "bb.bb.bb..........bb.b",
-            "b.................b..b",
-            "..bb....s.....bb......",
-            "..bb..........bb..s...",
+            "bb.bb.bb..........bbbS",
+            "b.................b.b.",
+            "..bb....s.....bb....b.",
+            "..bb..........bb..s.b.",
             "........bb............",
             "..s.....bb.......bb...",
             "................bbb...",
@@ -152,19 +152,19 @@ public static class ZeldaBoardBuilder
             "......................",
             "......................",
         },
-        // Row 2, col 2 — the arena
+        // Row 2, col 2 — the boss arena
         new[]
         {
             "......................",
             "......................",
-            "...bb............bb...",
-            "...bb....m.......bb...",
+            "...##............##...",
+            "...##............##...",
+            "......................",
+            "..........B...........",
             "......................",
             "......................",
-            "..........m...........",
-            "......................",
-            "...bb............bb...",
-            "...bb.....s......bb...",
+            "...##............##...",
+            "...##............##...",
             "......................",
             "......................",
         },
@@ -216,6 +216,110 @@ public static class ZeldaBoardBuilder
         { 'O', new Color32(220, 130, 50, 255) },  // orange
         { 'o', new Color32(150, 80, 30, 255) },   // dark orange
         { 'E', new Color32(90, 90, 100, 255) },   // empty heart grey
+        { 'C', new Color32(140, 235, 255, 255) }, // crystal
+        { 'c', new Color32(40, 120, 200, 255) },  // crystal outline
+    };
+
+    static readonly string[] CrystalSwordArt =
+    {
+        ".......cc.......",
+        "......cCWc......",
+        "......cCWc......",
+        "......cCWc......",
+        "......cCWc......",
+        "......cCWc......",
+        "......cCWc......",
+        "......cCWc......",
+        "......cCWc......",
+        "......cCCc......",
+        "..PPPPPPPPPPPP..",
+        "..pPPPPYYPPPPp..",
+        ".......BB.......",
+        ".......BB.......",
+        ".......BB.......",
+        "......YYYY......",
+    };
+
+    static readonly string[] BossArt =
+    {
+        "..K..........K..",
+        ".KK..........KK.",
+        ".KRK........KRK.",
+        "..KRKKKKKKKKRK..",
+        "...KRRRRRRRRK...",
+        "..KRRRRRRRRRRK..",
+        ".KRRYYRRRRYYRRK.",
+        ".KRRYKRRRRKYRRK.",
+        ".KRRRRRRRRRRRRK.",
+        ".KRRRDDDDDDRRRK.",
+        "..KRDWDWWDWDRK..",
+        "..KRDDDDDDDDRK..",
+        "...KRRRRRRRRK...",
+        "..KKRRKKKKRRKK..",
+        ".KRRK......KRRK.",
+        ".KKK........KKK.",
+    };
+
+    // Mouth wide open (wind-up / breathing fire).
+    static readonly string[] BossAttackArt =
+    {
+        "..K..........K..",
+        ".KK..........KK.",
+        ".KRK........KRK.",
+        "..KRKKKKKKKKRK..",
+        "...KRRRRRRRRK...",
+        "..KRRRRRRRRRRK..",
+        ".KRRYYRRRRYYRRK.",
+        ".KRRYYRRRRYYRRK.",
+        ".KRRDDDDDDDDRRK.",
+        "..KDWDWWDWWDWDK.",
+        "..KDDDDOODDDDDK.",
+        "..KDWDWDDWDWDK..",
+        "...KRRRRRRRRK...",
+        "..KKRRKKKKRRKK..",
+        ".KRRK......KRRK.",
+        ".KKK........KKK.",
+    };
+
+    // Second walk frame: feet swapped.
+    static readonly string[] BossStepArt =
+    {
+        "..K..........K..",
+        ".KK..........KK.",
+        ".KRK........KRK.",
+        "..KRKKKKKKKKRK..",
+        "...KRRRRRRRRK...",
+        "..KRRRRRRRRRRK..",
+        ".KRRYYRRRRYYRRK.",
+        ".KRRYKRRRRKYRRK.",
+        ".KRRRRRRRRRRRRK.",
+        ".KRRRDDDDDDRRRK.",
+        "..KRDWDWWDWDRK..",
+        "..KRDDDDDDDDRK..",
+        "...KRRRRRRRRK...",
+        "..KKRRKKKKRRKK..",
+        "..KRRK....KRRK..",
+        "..KKK......KKK..",
+    };
+
+    static readonly string[] FireballArt =
+    {
+        "................",
+        "................",
+        "................",
+        "......OOOO......",
+        ".....OYYYYO.....",
+        "....OYWWWYYO....",
+        "....OYWWYYYO....",
+        "...OYYYYYYYYO...",
+        "...OYYYYYYYRO...",
+        "....OYYYYYRO....",
+        "....OOYYYROO....",
+        ".....OOOOOO.....",
+        "................",
+        "................",
+        "................",
+        "................",
     };
 
     static readonly string[] PlayerArt =
@@ -468,6 +572,10 @@ public static class ZeldaBoardBuilder
         var playerUp = PlayerFrames("Up", PlayerUpArt, FrontLegs, 0, 1);
         var playerSide = PlayerFrames("Side", PlayerSideArt, SideLegs, 1, 0);
         var swordSprite = SaveSprite("Sword", FromArt(SwordArt));
+        var crystalSwordSprite = SaveSprite("CrystalSword", FromArt(CrystalSwordArt));
+        var bossFrames = new[] { SaveSprite("Boss", FromArt(BossArt)), SaveSprite("Boss_Step", FromArt(BossStepArt)) };
+        var bossAttackSprite = SaveSprite("Boss_Attack", FromArt(BossAttackArt));
+        var fireballSprite = SaveSprite("Fireball", FromArt(FireballArt));
         var slimeTex = FromArt(SlimeArt);
         var slimeFrames = new[] { SaveSprite("Slime", slimeTex), SaveSprite("Slime_Squash", Squash(slimeTex, 1.12f, 0.82f)) };
         var batFrames = new[] { SaveSprite("Bat", FromArt(BatArt)), SaveSprite("Bat_Flap", FromArt(BatWingsDownArt)) };
@@ -550,12 +658,30 @@ public static class ZeldaBoardBuilder
         var heartPrefab = PrefabUtility.SaveAsPrefabAsset(heartGo, PrefabDir + "/HeartPickup.prefab");
         Object.DestroyImmediate(heartGo);
 
+        // --- Fireball prefab (shot by the boss) ---
+        var fireballGo = new GameObject("Fireball");
+        fireballGo.transform.localScale = Vector3.one * 0.7f;
+        var fireballSr = fireballGo.AddComponent<SpriteRenderer>();
+        fireballSr.sprite = fireballSprite;
+        fireballSr.sortingOrder = 7;
+        var fireballRb = fireballGo.AddComponent<Rigidbody2D>();
+        fireballRb.gravityScale = 0;
+        fireballRb.freezeRotation = true;
+        fireballRb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        var fireballCol = fireballGo.AddComponent<CircleCollider2D>();
+        fireballCol.isTrigger = true;
+        fireballCol.radius = 0.3f;
+        fireballGo.AddComponent<Fireball>();
+        var fireballPrefab = PrefabUtility.SaveAsPrefabAsset(fireballGo, PrefabDir + "/Fireball.prefab");
+        Object.DestroyImmediate(fireballGo);
+
         // --- Player & monsters ---
         GameObject player = null;
         var monsters = new GameObject("Monsters");
         Undo.RegisterCreatedObjectUndo(monsters, "Build Zelda Board");
 
         // One container per room so the RoomManager can switch a whole room's monsters on and off.
+        int bossRoom = -1;
         var roomContainers = new Transform[WorldRows * WorldCols];
         for (int i = 0; i < roomContainers.Length; i++)
         {
@@ -583,6 +709,13 @@ public static class ZeldaBoardBuilder
                     break;
                 case 'm':
                     CreateMonster("Moblin", pos, moblinFrames, 6f, parent, bounds, Enemy.Behaviour.Chase, 2f, 3, heartPrefab);
+                    break;
+                case 'B':
+                    CreateBoss(pos, bossFrames, bossAttackSprite, parent, bounds, fireballPrefab);
+                    bossRoom = room;
+                    break;
+                case 'S':
+                    CreateSwordPickup(pos, crystalSwordSprite, parent);
                     break;
             }
         }
@@ -612,6 +745,7 @@ public static class ZeldaBoardBuilder
         roomManager.player = player != null ? player.GetComponent<PlayerController>() : null;
         roomManager.cam = cam;
         roomManager.roomMonsters = roomContainers;
+        roomManager.bossRoomIndex = bossRoom;
 
         // --- HUD ---
         var hud = new GameObject("HUD");
@@ -620,6 +754,7 @@ public static class ZeldaBoardBuilder
         hudComp.playerHealth = player != null ? player.GetComponent<Health>() : null;
         hudComp.heartFull = heartSprite.texture;
         hudComp.heartEmpty = heartEmptySprite.texture;
+        hudComp.upgradedSwordIcon = crystalSwordSprite.texture;
 
         // --- Audio ---
         var clips = ChiptuneSynth.GenerateAll();
@@ -634,6 +769,9 @@ public static class ZeldaBoardBuilder
         am.pickup = clips.pickup;
         am.victory = clips.victory;
         am.gameOver = clips.gameOver;
+        am.bossMusic = clips.bossMusic;
+        am.fireball = clips.fireball;
+        am.itemGet = clips.itemGet;
 
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         EditorSceneManager.SaveOpenScenes();
@@ -719,6 +857,58 @@ public static class ZeldaBoardBuilder
         enemy.moveSpeed = speed;
         enemy.dropOnDeath = drop;
         enemy.bounds = bounds;
+    }
+
+    static void CreateBoss(Vector3 pos, Sprite[] walkFrames, Sprite attackFrame, Transform parent, Rect roomBounds, GameObject fireballPrefab)
+    {
+        var go = new GameObject("Boss");
+        go.transform.SetParent(parent, false);
+        go.transform.position = pos;
+        go.transform.localScale = Vector3.one * 2.5f;
+
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = walkFrames[0];
+        sr.sortingOrder = 5;
+
+        var rb = go.AddComponent<Rigidbody2D>();
+        rb.gravityScale = 0;
+        rb.freezeRotation = true;
+        rb.mass = 5f;
+        rb.linearDamping = 4f; // knockback fades quickly
+        rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+
+        var col = go.AddComponent<CircleCollider2D>();
+        col.radius = 0.38f;
+
+        // 30 HP: 10 hits with the basic sword (3 dmg each), 3 hits with the Crystal Sword (10 dmg each).
+        var health = go.AddComponent<Health>();
+        health.maxHealth = 30;
+        // Long enough that one swing counts once, shorter than the 0.3 s between swings so none are wasted.
+        health.invulnerableTime = 0.25f;
+        health.stunTime = 0.1f;
+
+        var boss = go.AddComponent<Boss>();
+        boss.walkFrames = walkFrames;
+        boss.attackFrame = attackFrame;
+        boss.fireballPrefab = fireballPrefab;
+        // The boss is ~2 tiles wide, so keep its centre a bit further from the walls.
+        boss.bounds = new Rect(roomBounds.x + 0.75f, roomBounds.y + 0.75f, roomBounds.width - 1.5f, roomBounds.height - 1.5f);
+    }
+
+    static void CreateSwordPickup(Vector3 pos, Sprite sprite, Transform parent)
+    {
+        var go = new GameObject("CrystalSword");
+        go.transform.SetParent(parent, false);
+        go.transform.position = pos;
+        go.transform.rotation = Quaternion.Euler(0, 0, -45f);
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = sprite;
+        sr.sortingOrder = 4;
+        var col = go.AddComponent<CircleCollider2D>();
+        col.isTrigger = true;
+        col.radius = 0.4f;
+        var pickup = go.AddComponent<SwordPickup>();
+        pickup.upgradedSwordSprite = sprite;
     }
 
     static Tilemap CreateTilemap(Transform parent, string name, int order)
