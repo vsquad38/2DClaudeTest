@@ -25,8 +25,14 @@ public class GameHUD : MonoBehaviour
     GUIStyle smallText;
     GUIStyle messageText;
     bool won;
+    bool paused;
+    int pauseSelected;
     string message;
     float messageUntil;
+
+    static readonly string[] PauseItems = { "Resume", "Quit to Title" };
+
+    public static bool Paused => instance != null && instance.paused;
 
     public static void ShowMessage(string text)
     {
@@ -58,12 +64,42 @@ public class GameHUD : MonoBehaviour
             var pad = Gamepad.current;
             bool restart = (kb != null && (kb.enterKey.wasPressedThisFrame || kb.rKey.wasPressedThisFrame))
                 || (pad != null && pad.startButton.wasPressedThisFrame);
-            if (restart)
-            {
-                Time.timeScale = 1f;
-                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
-            }
+            if (restart) LoadScene(SceneManager.GetActiveScene().name);
+            else if (MenuInput.Back) LoadScene(GameSettings.TitleScene);
+            return;
         }
+
+        if (playerHealth == null || playerHealth.IsDead) return;
+
+        if (paused)
+        {
+            if (MenuInput.Up || MenuInput.Down) pauseSelected = 1 - pauseSelected;
+            if (MenuInput.Confirm) ChoosePauseItem(pauseSelected);
+            else if (MenuInput.Pause) SetPaused(false);
+        }
+        else if (MenuInput.Pause)
+        {
+            SetPaused(true);
+        }
+    }
+
+    void SetPaused(bool value)
+    {
+        paused = value;
+        pauseSelected = 0;
+        Time.timeScale = value ? 0f : 1f;
+    }
+
+    void ChoosePauseItem(int index)
+    {
+        if (index == 0) SetPaused(false);
+        else LoadScene(GameSettings.TitleScene);
+    }
+
+    static void LoadScene(string sceneName)
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(sceneName);
     }
 
     void OnGUI()
@@ -106,8 +142,44 @@ public class GameHUD : MonoBehaviour
         else if (won)
         {
             GUI.Label(center, "YOU WIN!", bigText);
-            GUI.Label(new Rect(0, Screen.height / 2f + 40, Screen.width, 40), "The boss is defeated. Press Enter to play again.", smallText);
+            GUI.Label(new Rect(0, Screen.height / 2f + 40, Screen.width, 40),
+                "The boss is defeated. Press Enter to play again, or Esc for the title screen.", smallText);
         }
+        else if (paused)
+        {
+            DrawPauseMenu();
+        }
+    }
+
+    void DrawPauseMenu()
+    {
+        var old = GUI.color;
+        GUI.color = new Color(0f, 0f, 0f, 0.6f);
+        GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
+        GUI.color = old;
+
+        GUI.Label(new Rect(0, Screen.height / 2f - 110, Screen.width, 60), "PAUSED", bigText);
+        for (int i = 0; i < PauseItems.Length; i++)
+        {
+            var rect = new Rect(Screen.width / 2f - 150, Screen.height / 2f - 20 + i * 50, 300, 44);
+            var e = Event.current;
+            if (rect.Contains(e.mousePosition))
+            {
+                pauseSelected = i;
+                if (e.type == EventType.MouseDown && e.button == 0)
+                {
+                    e.Use();
+                    ChoosePauseItem(i);
+                    return;
+                }
+            }
+            bool isSelected = i == pauseSelected;
+            smallText.fontSize = 30;
+            smallText.normal.textColor = isSelected ? new Color(1f, 0.85f, 0.3f) : Color.white;
+            GUI.Label(rect, isSelected ? $"> {PauseItems[i]} <" : PauseItems[i], smallText);
+        }
+        smallText.fontSize = 22;
+        smallText.normal.textColor = Color.white;
     }
 
     void DrawBossBar()

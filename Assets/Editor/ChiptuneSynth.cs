@@ -12,7 +12,8 @@ public static class ChiptuneSynth
 
     public struct Clips
     {
-        public AudioClip music, bossMusic, swing, hit, enemyDie, hurt, pickup, victory, gameOver, fireball, itemGet;
+        public AudioClip music, bossMusic, swing, hit, enemyDie, hurt, pickup, victory, gameOver, fireball, itemGet,
+            menuMove, menuSelect;
     }
 
     public static Clips GenerateAll()
@@ -29,6 +30,8 @@ public static class ChiptuneSynth
             gameOver = Save("GameOver", Notes(new[] { "E5", "D#5", "D5", "C#5", "C5", "C5", "C5", "-" }, 0.18f, 0.5f, 0.3f)),
             fireball = Save("Fireball", FireballWhoosh()),
             itemGet = Save("ItemGet", Notes(new[] { "G5", "A5", "B5", "D6", "-", "B5", "D6", "G6", "G6", "G6" }, 0.09f, 0.25f, 0.3f)),
+            menuMove = Save("MenuMove", Notes(new[] { "E6" }, 0.035f, 0.5f, 0.2f)),
+            menuSelect = Save("MenuSelect", Notes(new[] { "C6", "G6" }, 0.05f, 0.25f, 0.25f)),
             music = Save("Music", Music()),
             bossMusic = Save("BossMusic", BossMusic()),
         };

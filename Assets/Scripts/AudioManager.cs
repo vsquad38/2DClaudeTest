@@ -31,10 +31,10 @@ public class AudioManager : MonoBehaviour
         musicSource = gameObject.AddComponent<AudioSource>();
         musicSource.loop = true;
         musicSource.playOnAwake = false;
-        musicSource.volume = musicVolume;
+        musicSource.volume = musicVolume * GameSettings.MusicVolume;
         sfxSource = gameObject.AddComponent<AudioSource>();
         sfxSource.playOnAwake = false;
-        sfxSource.volume = sfxVolume;
+        sfxSource.volume = sfxVolume * GameSettings.SfxVolume;
     }
 
     void Start()

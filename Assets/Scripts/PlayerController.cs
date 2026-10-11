@@ -52,7 +52,7 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        if (health.IsDead) return;
+        if (health.IsDead || GameHUD.Paused) return;
 
         if (Frozen)
         {
