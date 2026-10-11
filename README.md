@@ -2,6 +2,8 @@
 
 A small top-down action roguelike in the style of classic Zelda, built in Unity with the help of Claude. Explore a 3×3 world of screen-sized rooms, hunt for a hidden Crystal Sword, and defeat the boss in its lair. Then do it again, as the world grows more dangerous every level, until you fall.
 
+**[⬇ Download the latest release for Windows](https://github.com/vsquad38/2DClaudeTest/releases/latest)**: extract the zip and run `CrystalSwordQuest.exe`. Windows may show a SmartScreen warning because the game isn't code-signed; choose **More info → Run anyway**.
+
 ![The 3×3 world map at level 1](Docs/screenshot.png)
 
 *Above: the whole world as laid out in the editor, showing all five Crystal Sword nooks and the boss's starting point. In play, one nook is used per level and the boss moves to a random corner room. Below: part of the world at level 5, with scorched ground, thorn bushes, skulls, bones and glowing embers.*
@@ -11,6 +13,8 @@ A small top-down action roguelike in the style of classic Zelda, built in Unity 
 All of the pixel art, sound effects and music are generated from code. There are no imported art or audio assets.
 
 ## Playing
+
+To just play, grab the Windows build from [Releases](https://github.com/vsquad38/2DClaudeTest/releases). To play from the Unity project:
 
 1. Open the project in **Unity 6000.6.5f1** (or a compatible Unity 6 version).
 2. Press **Play**. The game always starts from the title screen, whichever scene is open.
