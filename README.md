@@ -1,8 +1,8 @@
 # 2D Claude Test — Top-Down Adventure Prototype
 
-A small top-down action prototype in the style of classic Zelda, built in Unity with the help of Claude. Explore a single board, swing your sword, and clear out every monster.
+A small top-down action prototype in the style of classic Zelda, built in Unity with the help of Claude. Explore a 3×3 world of screen-sized rooms, swing your sword, and clear out every monster.
 
-![The board](Docs/screenshot.png)
+![The 3×3 world map](Docs/screenshot.png)
 
 All of the pixel art, sound effects and music are generated from code — there are no imported art or audio assets.
 
@@ -17,10 +17,12 @@ All of the pixel art, sound effects and music are generated from code — there 
 | Move | WASD / Arrow keys | Left stick |
 | Sword attack | Space / J | South button (A / Cross) |
 
-Defeat every monster to win. You have 5 hearts; if they run out, the board restarts.
+Walk through a doorway to scroll to the next room. Defeat every monster in the world to win. You have 5 hearts; if they run out, the board restarts.
 
 ## Features
 
+- **Screen-to-screen rooms**: nine rooms (woods, ruins, lake, hedge maze, moblin camp, graveyard, river crossing, arena and the starting clearing). The camera slides to the next room as you walk through a doorway, and only the current room's monsters are active. Monsters you leave alive return to their starting spots when you come back.
+- **Minimap** showing visited rooms and where you are.
 - **Player** with four-direction movement, walk animations for each direction, and a sweeping sword arc.
 - **Three monster types**
   - **Slime** (red, 2 HP) — wanders around.
@@ -35,7 +37,7 @@ Defeat every monster to win. You have 5 hearts; if they run out, the board resta
 
 | Path | Contents |
 | --- | --- |
-| `Assets/Scripts/` | Runtime gameplay: `PlayerController`, `PlayerAnimator`, `Enemy`, `SpriteAnimator`, `SwordHitbox`, `Health`, `HeartPickup`, `GameHUD`, `AudioManager` |
+| `Assets/Scripts/` | Runtime gameplay: `PlayerController`, `PlayerAnimator`, `RoomManager`, `Enemy`, `SpriteAnimator`, `SwordHitbox`, `Health`, `HeartPickup`, `GameHUD`, `AudioManager` |
 | `Assets/Editor/ZeldaBoardBuilder.cs` | Draws the pixel art and builds the level in the open scene |
 | `Assets/Editor/ChiptuneSynth.cs` | Synthesizes the sound effects and music as WAV files |
 | `Assets/Art/` | Generated sprites and tiles |
@@ -45,19 +47,20 @@ Defeat every monster to win. You have 5 hearts; if they run out, the board resta
 
 ## Editing the level
 
-The board layout is a text grid in `Assets/Editor/ZeldaBoardBuilder.cs` (`Map`):
+Each room's layout is a text grid in the `Rooms` list in `Assets/Editor/ZeldaBoardBuilder.cs`. Each grid is the room's 22×12 interior. The outer walls are added automatically, with a doorway cut in the middle of each side that touches another room. Keep the middle two columns and middle two rows reasonably clear so the doorways stay reachable.
 
 | Character | Meaning |
 | --- | --- |
 | `#` | Wall |
 | `b` | Bush |
+| `w` | Water |
 | `.` | Grass |
 | `P` | Player start |
 | `s` | Slime |
 | `v` | Bat |
 | `m` | Moblin |
 
-After editing, run **Tools > Build Zelda Board** in the Unity menu. This regenerates the art, audio and level in the open scene and saves it.
+To change the world size, adjust `WorldRows` / `WorldCols` and add or remove room grids to match (listed row by row). After editing, run **Tools > Build Zelda Board** in the Unity menu. This regenerates the art, audio and level in the open scene and saves it.
 
 The sprites are also defined as text in the same file, one character per pixel, so you can redraw characters there. To change the music, edit the `Melody` and `Bass` note lists in `Assets/Editor/ChiptuneSynth.cs` and rebuild.
 

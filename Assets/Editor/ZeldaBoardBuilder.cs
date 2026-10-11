@@ -12,24 +12,186 @@ public static class ZeldaBoardBuilder
     const string PrefabDir = "Assets/Prefabs";
     const int PPU = 16;
 
-    // '#' wall, 'b' bush, '.' grass, 'P' player, 's' slime (wanders), 'v' bat (erratic), 'm' moblin (chases)
-    static readonly string[] Map =
+    // The world is a grid of rooms, each exactly one screen (RoomW x RoomH tiles).
+    // Each layout below is a room's 22x12 interior; the outer wall is added automatically, with a
+    // 2-tile doorway cut in the middle of every side that touches another room.
+    // '#' wall, 'b' bush, 'w' water, '.' grass, 'P' player start,
+    // 's' slime (wanders), 'v' bat (erratic), 'm' moblin (chases)
+    const int RoomW = 24;
+    const int RoomH = 14;
+    const int WorldCols = 3;
+    const int WorldRows = 3;
+
+    static readonly string[][] Rooms =
     {
-        "########################",
-        "#.........b............#",
-        "#..b...........s....b..#",
-        "#......##.........##...#",
-        "#..v...##....b....##.m.#",
-        "#..........bbb.........#",
-        "#...b......bbb.....s...#",
-        "#......................#",
-        "#.....s.........v......#",
-        "#...##.............b...#",
-        "#...##....P............#",
-        "#..........#####...m...#",
-        "#..b..v..........s...b.#",
-        "########################",
+        // Row 0, col 0 — the woods
+        new[]
+        {
+            "bb.bb.bb..........bb.b",
+            "b.................b..b",
+            "..bb....s.....bb......",
+            "..bb..........bb..s...",
+            "........bb............",
+            "..s.....bb.......bb...",
+            "................bbb...",
+            "..bb.......s..........",
+            "..bb..........bb......",
+            ".........v....bb...b..",
+            "b...bb...............b",
+            "bb..bb.....b...bb...bb",
+        },
+        // Row 0, col 1 — the ruins
+        new[]
+        {
+            "......................",
+            "..##..............##..",
+            "..##......m.......##..",
+            "......................",
+            "......##......##......",
+            "......##......##......",
+            "..........s...........",
+            "......##......##......",
+            "......##......##......",
+            "......................",
+            "..##........v.....##..",
+            "..##..............##..",
+        },
+        // Row 0, col 2 — the lake
+        new[]
+        {
+            "......................",
+            "...wwwwww.............",
+            "..wwwwwwwww.....v.....",
+            "..wwwwwwwww...........",
+            "...wwwwwww......bb....",
+            "....wwww........bb....",
+            "......................",
+            ".........v............",
+            "..............wwww....",
+            ".............wwwwww...",
+            "....s.........wwww....",
+            "......................",
+        },
+        // Row 1, col 0 — the hedge maze
+        new[]
+        {
+            "......................",
+            ".bbbbbbb....bbbbbbbb..",
+            ".b..................b.",
+            ".b..s.....bb.....v..b.",
+            ".b........bb........b.",
+            "......................",
+            "......................",
+            ".b........bb........b.",
+            ".b..v.....bb.....s..b.",
+            ".b..................b.",
+            ".bbbbbbb....bbbbbbbb..",
+            "......................",
+        },
+        // Row 1, col 1 — the start
+        new[]
+        {
+            "......................",
+            "..b................b..",
+            "......................",
+            "......##......##......",
+            "......##......##......",
+            "......................",
+            "..........P...........",
+            "......................",
+            "......##......##......",
+            "......##......##......",
+            "..b.....s..........b..",
+            "......................",
+        },
+        // Row 1, col 2 — the moblin camp
+        new[]
+        {
+            "......................",
+            "..########..########..",
+            "..#................#..",
+            "..#..m.........m...#..",
+            "..#................#..",
+            "..........bb..........",
+            "..........bb..........",
+            "..#................#..",
+            "..#.......s........#..",
+            "..#................#..",
+            "..########..########..",
+            "......................",
+        },
+        // Row 2, col 0 — the graveyard
+        new[]
+        {
+            "......................",
+            "..#...#.......#...#...",
+            "......................",
+            "..#...#...#...#...#...",
+            "........v.............",
+            "..#...#.......#...#...",
+            "..........s...........",
+            "..#...#.......#...#...",
+            "..............v.......",
+            "..#...#...#...#...#...",
+            "......................",
+            "......................",
+        },
+        // Row 2, col 1 — the river crossing
+        new[]
+        {
+            "......................",
+            "..b...........s....b..",
+            "......................",
+            "wwwwwwwwww..wwwwwwwwww",
+            "wwwwwwwwww..wwwwwwwwww",
+            "......................",
+            "......m...............",
+            "......................",
+            "..bb..............bb..",
+            "..bb......v.......bb..",
+            "......................",
+            "......................",
+        },
+        // Row 2, col 2 — the arena
+        new[]
+        {
+            "......................",
+            "......................",
+            "...bb............bb...",
+            "...bb....m.......bb...",
+            "......................",
+            "......................",
+            "..........m...........",
+            "......................",
+            "...bb............bb...",
+            "...bb.....s......bb...",
+            "......................",
+            "......................",
+        },
     };
+
+    // Character at (x, y) of room (row, col), including the generated outer wall and doorways.
+    static char RoomChar(int row, int col, int x, int y)
+    {
+        bool doorUp = row > 0, doorDown = row < WorldRows - 1;
+        bool doorLeft = col > 0, doorRight = col < WorldCols - 1;
+        bool doorCol = x == RoomW / 2 - 1 || x == RoomW / 2;
+        bool doorRow = y == RoomH / 2 - 1 || y == RoomH / 2;
+
+        // Outer wall, with doorways. The first few tiles inside each doorway are kept clear too, so the
+        // room transition (which walks the player in) never drops them inside a wall or bush.
+        const int clearDepth = 3;
+        if (y <= clearDepth && doorUp && doorCol) return '.';
+        if (y >= RoomH - 1 - clearDepth && doorDown && doorCol) return '.';
+        if (x <= clearDepth && doorLeft && doorRow) return '.';
+        if (x >= RoomW - 1 - clearDepth && doorRight && doorRow) return '.';
+        if (x == 0 || y == 0 || x == RoomW - 1 || y == RoomH - 1) return '#';
+
+        string[] layout = Rooms[row * WorldCols + col];
+        int ix = x - 1, iy = y - 1;
+        string line = iy < layout.Length ? layout[iy] : "";
+        return ix < line.Length ? line[ix] : '.';
+    }
 
     static readonly Dictionary<char, Color32> Palette = new Dictionary<char, Color32>
     {
@@ -322,14 +484,16 @@ public static class ZeldaBoardBuilder
         var heartEmptySprite = SaveSprite("HeartEmpty", FromArt(HeartArt, 'E'));
         var grassSprite = SaveSprite("Grass", GrassTexture());
         var wallSprite = SaveSprite("Wall", WallTexture());
+        var waterSprite = SaveSprite("Water", WaterTexture());
 
         // --- Tiles ---
+        var waterTile = SaveTile("WaterTile", waterSprite, Tile.ColliderType.Grid);
         var grassTile = SaveTile("GrassTile", grassSprite, Tile.ColliderType.None);
         var wallTile = SaveTile("WallTile", wallSprite, Tile.ColliderType.Grid);
         var bushTile = SaveTile("BushTile", bushSprite, Tile.ColliderType.Sprite);
 
         // --- Clean up anything from a previous build ---
-        foreach (var name in new[] { "Board", "Player", "Monsters", "HUD", "Audio" })
+        foreach (var name in new[] { "Board", "Player", "Monsters", "HUD", "Audio", "Rooms" })
         {
             var old = GameObject.Find(name);
             if (old != null) Undo.DestroyObjectImmediate(old);
@@ -341,27 +505,39 @@ public static class ZeldaBoardBuilder
 
         var ground = CreateTilemap(board.transform, "Ground", 0);
         var walls = CreateTilemap(board.transform, "Walls", 1);
+
+        // Room (row, col) is centred at (col * RoomW, -row * RoomH) in world units.
+        var spawns = new List<(char c, Vector3 pos, int room)>();
+        for (int row = 0; row < WorldRows; row++)
+        for (int col = 0; col < WorldCols; col++)
+        {
+            for (int y = 0; y < RoomH; y++)
+            {
+                for (int x = 0; x < RoomW; x++)
+                {
+                    char ch = RoomChar(row, col, x, y);
+                    var cell = new Vector3Int(col * RoomW + x - RoomW / 2, -row * RoomH + RoomH / 2 - 1 - y, 0);
+                    ground.SetTile(cell, grassTile);
+                    if (ch == '#') walls.SetTile(cell, wallTile);
+                    else if (ch == 'b') walls.SetTile(cell, bushTile);
+                    else if (ch == 'w') walls.SetTile(cell, waterTile);
+                    else if (ch != '.') spawns.Add((ch, new Vector3(cell.x + 0.5f, cell.y + 0.5f, 0), row * WorldCols + col));
+                }
+            }
+        }
+
+        // Colliders go on after the tiles are placed, then the merged geometry is generated explicitly.
+        // (If the composite is generated while the tilemap is still empty, the scene saves with no wall collision.)
         var wallBody = walls.gameObject.AddComponent<Rigidbody2D>();
         wallBody.bodyType = RigidbodyType2D.Static;
         var tilemapCollider = walls.gameObject.AddComponent<TilemapCollider2D>();
         tilemapCollider.compositeOperation = Collider2D.CompositeOperation.Merge;
-        walls.gameObject.AddComponent<CompositeCollider2D>();
-
-        int rows = Map.Length;
-        int cols = Map[0].Length;
-        var spawns = new List<(char c, Vector3 pos)>();
-        for (int r = 0; r < rows; r++)
-        {
-            for (int c = 0; c < cols; c++)
-            {
-                char ch = c < Map[r].Length ? Map[r][c] : '#';
-                var cell = new Vector3Int(c - cols / 2, rows / 2 - 1 - r, 0);
-                ground.SetTile(cell, grassTile);
-                if (ch == '#') walls.SetTile(cell, wallTile);
-                else if (ch == 'b') walls.SetTile(cell, bushTile);
-                else if (ch != '.') spawns.Add((ch, new Vector3(cell.x + 0.5f, cell.y + 0.5f, 0)));
-            }
-        }
+        var composite = walls.gameObject.AddComponent<CompositeCollider2D>();
+        composite.geometryType = CompositeCollider2D.GeometryType.Polygons; // solid, so anything inside gets pushed out
+        tilemapCollider.ProcessTilemapChanges();
+        composite.GenerateGeometry();
+        if (composite.pathCount == 0)
+            Debug.LogError("Zelda board: wall collider geometry is empty - walls will not block movement.");
 
         // --- Heart pickup prefab (dropped by monsters) ---
         var heartGo = new GameObject("HeartPickup");
@@ -379,36 +555,63 @@ public static class ZeldaBoardBuilder
         var monsters = new GameObject("Monsters");
         Undo.RegisterCreatedObjectUndo(monsters, "Build Zelda Board");
 
-        foreach (var (ch, pos) in spawns)
+        // One container per room so the RoomManager can switch a whole room's monsters on and off.
+        var roomContainers = new Transform[WorldRows * WorldCols];
+        for (int i = 0; i < roomContainers.Length; i++)
         {
+            var container = new GameObject($"Room {i / WorldCols},{i % WorldCols}");
+            container.transform.SetParent(monsters.transform, false);
+            roomContainers[i] = container.transform;
+        }
+
+        foreach (var (ch, pos, room) in spawns)
+        {
+            var parent = roomContainers[room];
+            // Keep monsters on their room's floor (inside the outer wall).
+            var center = new Vector2((room % WorldCols) * RoomW, -(room / WorldCols) * RoomH);
+            var bounds = new Rect(center.x - RoomW / 2f + 1.5f, center.y - RoomH / 2f + 1.5f, RoomW - 3f, RoomH - 3f);
             switch (ch)
             {
                 case 'P':
                     player = CreatePlayer(pos, playerDown, playerUp, playerSide, swordSprite);
                     break;
                 case 's':
-                    CreateMonster("Slime", pos, slimeFrames, 3f, monsters.transform, Enemy.Behaviour.Wander, 1.2f, 2, heartPrefab);
+                    CreateMonster("Slime", pos, slimeFrames, 3f, parent, bounds, Enemy.Behaviour.Wander, 1.2f, 2, heartPrefab);
                     break;
                 case 'v':
-                    CreateMonster("Bat", pos, batFrames, 10f, monsters.transform, Enemy.Behaviour.Erratic, 2.5f, 1, heartPrefab);
+                    CreateMonster("Bat", pos, batFrames, 10f, parent, bounds, Enemy.Behaviour.Erratic, 2.5f, 1, heartPrefab);
                     break;
                 case 'm':
-                    CreateMonster("Moblin", pos, moblinFrames, 6f, monsters.transform, Enemy.Behaviour.Chase, 2f, 3, heartPrefab);
+                    CreateMonster("Moblin", pos, moblinFrames, 6f, parent, bounds, Enemy.Behaviour.Chase, 2f, 3, heartPrefab);
                     break;
             }
         }
 
-        // --- Camera: frame the whole board ---
+        // --- Camera: frames one room; starts on the player's room ---
         var cam = Camera.main;
         if (cam != null)
         {
             Undo.RecordObject(cam, "Build Zelda Board");
             Undo.RecordObject(cam.transform, "Build Zelda Board");
             cam.orthographic = true;
-            cam.orthographicSize = rows / 2f + 0.2f;
-            cam.transform.position = new Vector3(0, 0, -10);
+            cam.orthographicSize = RoomH / 2f + 0.2f;
+            Vector3 start = Vector3.zero;
+            foreach (var (ch, _, room) in spawns)
+                if (ch == 'P') start = new Vector3((room % WorldCols) * RoomW, -(room / WorldCols) * RoomH, 0);
+            cam.transform.position = start + new Vector3(0, 0, -10);
             cam.backgroundColor = new Color(0.08f, 0.08f, 0.1f);
         }
+
+        // --- Rooms ---
+        var roomsGo = new GameObject("Rooms");
+        Undo.RegisterCreatedObjectUndo(roomsGo, "Build Zelda Board");
+        var roomManager = roomsGo.AddComponent<RoomManager>();
+        roomManager.rows = WorldRows;
+        roomManager.cols = WorldCols;
+        roomManager.roomSize = new Vector2(RoomW, RoomH);
+        roomManager.player = player != null ? player.GetComponent<PlayerController>() : null;
+        roomManager.cam = cam;
+        roomManager.roomMonsters = roomContainers;
 
         // --- HUD ---
         var hud = new GameObject("HUD");
@@ -483,7 +686,7 @@ public static class ZeldaBoardBuilder
         return go;
     }
 
-    static void CreateMonster(string name, Vector3 pos, Sprite[] frames, float fps, Transform parent,
+    static void CreateMonster(string name, Vector3 pos, Sprite[] frames, float fps, Transform parent, Rect bounds,
         Enemy.Behaviour behaviour, float speed, int hp, GameObject drop)
     {
         var go = new GameObject(name);
@@ -515,6 +718,7 @@ public static class ZeldaBoardBuilder
         enemy.behaviour = behaviour;
         enemy.moveSpeed = speed;
         enemy.dropOnDeath = drop;
+        enemy.bounds = bounds;
     }
 
     static Tilemap CreateTilemap(Transform parent, string name, int order)
@@ -612,6 +816,25 @@ public static class ZeldaBoardBuilder
                 bool isMortar = y % 4 == 0 || (x + offset) % 8 == 0;
                 bool isHighlight = !isMortar && (y % 4 == 3);
                 tex.SetPixel(x, y, isMortar ? mortar : isHighlight ? hi : stone);
+            }
+        tex.Apply();
+        return tex;
+    }
+
+    static Texture2D WaterTexture()
+    {
+        var tex = NewTexture();
+        var deep = new Color32(40, 90, 200, 255);
+        var mid = new Color32(60, 120, 220, 255);
+        var foam = new Color32(170, 210, 250, 255);
+        for (int y = 0; y < 16; y++)
+            for (int x = 0; x < 16; x++)
+            {
+                // Two staggered rows of little wave crests.
+                int wy = y % 8;
+                int wx = (x + (y / 8) * 4) % 8;
+                bool crest = (wy == 5 && (wx == 1 || wx == 4)) || (wy == 6 && (wx == 2 || wx == 3));
+                tex.SetPixel(x, y, crest ? foam : (y / 4) % 2 == 0 ? deep : mid);
             }
         tex.Apply();
         return tex;

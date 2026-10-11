@@ -29,6 +29,12 @@ public class Health : MonoBehaviour
         sr = GetComponent<SpriteRenderer>();
     }
 
+    void OnDisable()
+    {
+        // Coroutines stop when disabled (e.g. leaving a room), so don't leave the sprite mid-flash.
+        if (sr != null) sr.color = Color.white;
+    }
+
     public bool TakeDamage(int amount, Vector2 knockback)
     {
         if (IsDead || Time.time < invulnerableUntil) return false;

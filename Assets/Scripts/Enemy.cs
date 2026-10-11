@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 // Simple monster AI: wanders randomly and chases the player when close. Hurts the player on contact.
@@ -6,7 +7,12 @@ public class Enemy : MonoBehaviour
 {
     public enum Behaviour { Wander, Chase, Erratic }
 
+    // Every living monster in the world, including ones in inactive rooms.
+    public static readonly List<Enemy> All = new List<Enemy>();
+
     public Behaviour behaviour = Behaviour.Wander;
+    // World-space area the monster stays inside (its room's floor). Zero size = unbounded.
+    public Rect bounds;
     public float moveSpeed = 1.5f;
     public float chaseRange = 4f;
     public int contactDamage = 1;
@@ -21,6 +27,7 @@ public class Enemy : MonoBehaviour
     Transform player;
     Vector2 wanderDir;
     float nextDirectionChange;
+    Vector3 spawnPosition;
 
     void Awake()
     {
@@ -29,6 +36,24 @@ public class Enemy : MonoBehaviour
         sr = GetComponent<SpriteRenderer>();
         health.Damaged += OnDamaged;
         health.Died += OnDied;
+        spawnPosition = transform.position;
+        All.Add(this);
+    }
+
+    void OnDestroy()
+    {
+        All.Remove(this);
+    }
+
+    // Called when the player re-enters this monster's room.
+    public void ResetToSpawn()
+    {
+        transform.position = spawnPosition;
+        if (rb != null)
+        {
+            rb.position = spawnPosition;
+            rb.linearVelocity = Vector2.zero;
+        }
     }
 
     void OnDamaged()
@@ -59,6 +84,14 @@ public class Enemy : MonoBehaviour
         {
             PickWanderDirection();
             dir = wanderDir;
+        }
+
+        // Stay inside the room: if outside the bounds, head back toward the middle.
+        if (bounds.width > 0f && !bounds.Contains(rb.position))
+        {
+            dir = (bounds.center - rb.position).normalized;
+            wanderDir = dir;
+            nextDirectionChange = Time.time + 0.5f;
         }
 
         rb.linearVelocity = dir * moveSpeed;
@@ -102,7 +135,7 @@ public class Enemy : MonoBehaviour
     void OnDied()
     {
         if (dropOnDeath != null && Random.value < dropChance)
-            Instantiate(dropOnDeath, transform.position, Quaternion.identity);
+            Instantiate(dropOnDeath, transform.position, Quaternion.identity, transform.parent); // stays with its room
         Destroy(gameObject);
     }
 }

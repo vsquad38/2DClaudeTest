@@ -24,6 +24,9 @@ public class PlayerController : MonoBehaviour
     bool swinging;
     float nextSwingTime;
 
+    // Set by RoomManager while the screen scrolls: ignore input and play the walk cycle.
+    public bool Frozen { get; set; }
+
     void Awake()
     {
         rb = GetComponent<Rigidbody2D>();
@@ -41,6 +44,13 @@ public class PlayerController : MonoBehaviour
     void Update()
     {
         if (health.IsDead) return;
+
+        if (Frozen)
+        {
+            input = Vector2.zero;
+            if (anim != null) anim.UpdateVisual(facing, true, false);
+            return;
+        }
 
         input = ReadMove();
         // Snap to 4 directions, like the classic games.
@@ -60,7 +70,7 @@ public class PlayerController : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (health.IsDead || health.IsStunned) return;
+        if (health.IsDead || health.IsStunned || Frozen) return;
         float speed = swinging ? moveSpeed * 0.3f : moveSpeed;
         rb.linearVelocity = input * speed;
     }
